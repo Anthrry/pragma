@@ -1,0 +1,53 @@
+// Пример смарт-контракта для депозита, займа и возмещения криптовалюты
+pragma solidity ^0.8.0;
+
+contract LoanContract {
+    address public borrower;
+    uint256 public loanAmount;
+    uint256 public collateralAmount;
+    bool public loanTaken;
+    bool public loanRepaid;
+
+    event LoanTaken(address borrower, uint256 loanAmount, uint256 collateralAmount);
+    event LoanRepaid(address borrower, uint256 repayAmount);
+    event Deposit(address depositor, uint256 amount);
+    
+    // Конструктор, который устанавливает начальные значения
+    constructor(uint256 _collateralAmount) {
+        borrower = msg.sender;
+        collateralAmount = _collateralAmount;
+    }
+
+    // Функция для депозита средств в контракт
+    function deposit() external payable {
+        require(msg.value > 0, "Deposit amount should be greater than zero");
+
+        emit Deposit(msg.sender, msg.value);
+    }
+
+    // Функция для взятия займа
+    function takeLoan(uint256 _loanAmount) external {
+        require(msg.sender == borrower, "Only borrower can take loan");
+        require(!loanTaken, "Loan has already been taken");
+        require(_loanAmount <= address(this).balance, "Loan amount exceeds available balance");
+
+        loanAmount = _loanAmount;
+        loanTaken = true;
+
+        emit LoanTaken(borrower, loanAmount, collateralAmount);
+    }
+
+    // Функция для возврата займа
+    function repayLoan() external payable {
+        require(msg.sender == borrower, "Only borrower can repay loan");
+        require(loanTaken, "Loan has not been taken yet");
+        require(!loanRepaid, "Loan has already been repaid");
+        require(msg.value >= loanAmount, "Insufficient repayment amount");
+
+        loanRepaid = true;
+
+        payable(borrower).transfer(msg.value);
+
+        emit LoanRepaid(borrower, msg.value);
+    }
+}
